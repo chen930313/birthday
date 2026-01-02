@@ -3,59 +3,179 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>汪汪隊專屬挑戰</title>
+    <title>汪汪隊專屬挑戰 🐾</title>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
     <style>
-        body { font-family: sans-serif; background: #ffe4e1; text-align: center; padding: 20px; }
-        .card { background: white; border-radius: 20px; padding: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        h1 { color: #ff69b4; }
-        .btn { display: block; width: 100%; padding: 15px; margin: 10px 0; border: none; background: #fdf5e6; border-radius: 10px; font-size: 16px; cursor: pointer; }
-        .btn:active { background: #ffd700; }
-        #feedback { font-weight: bold; margin-top: 20px; font-size: 20px; }
+        body { 
+            font-family: "Microsoft JhengHei", sans-serif; 
+            background-color: #e0f2fe; 
+            display: flex; justify-content: center; align-items: center; 
+            height: 100vh; margin: 0; color: #334155; overflow: hidden;
+        }
+        .card { 
+            background: white; border-radius: 25px; padding: 25px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1); 
+            width: 85%; max-width: 400px; text-align: center;
+            transition: all 0.5s ease;
+        }
+        .fade-in { animation: fadeIn 0.5s; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .score-board { font-size: 20px; font-weight: bold; color: #0284c7; margin-bottom: 10px; }
+        .question { font-size: 18px; margin-bottom: 20px; min-height: 60px; font-weight: bold; line-height: 1.4; }
+        .btn { 
+            display: block; width: 100%; padding: 12px; margin: 8px 0; 
+            border: 2px solid #bae6fd; background: white; border-radius: 50px; 
+            font-size: 16px; cursor: pointer; transition: 0.2s;
+        }
+        .btn:hover { background-color: #f0f9ff; }
+        .btn.selected { background-color: #7dd3fc; color: white; border-color: #7dd3fc; }
+        .confirm-btn { background-color: #fb7185; color: white; border: none; margin-top: 15px; display: none; }
+        #feedback { min-height: 45px; margin-top: 10px; font-weight: bold; font-size: 14px; }
+        .success { color: #059669; }
+        .error { color: #dc2626; }
     </style>
 </head>
 <body>
-    <div class="card" id="game-container">
-        <h1 id="question">準備好接受思瑜的考驗了嗎？</h1>
+
+<audio id="bgMusic" loop>
+    <source src="recall.mp3" type="audio/mpeg">
+</audio>
+<audio id="correctSound"><source src="https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3"></audio>
+<audio id="wrongSound"><source src="https://assets.mixkit.co/active_storage/sfx/2014/2014-preview.mp3"></audio>
+
+<div class="card fade-in" id="game-card">
+    <div class="score-board">得分：<span id="score">0</span></div>
+    <div id="game-content">
+        <div class="question" id="question">你以為你要拿到你的禮物了嗎?<br>嘿嘿~天下沒有白吃的午餐!<br>汪汪隊，準備好接受挑戰了嗎？</div>
         <div id="options">
-            <button class="btn" onclick="nextQuestion()">點我開始！</button>
+            <button class="btn" onclick="startGame()">點我開始挑戰!</button>
         </div>
+        <button id="confirm-btn" class="btn confirm-btn" onclick="checkMulti()">確認送出</button>
         <div id="feedback"></div>
     </div>
+</div>
 
-    <script>
-        const quizData = [
-            { q: "這輩子絕對不想做的事情是？", a: ["生小孩", "吃青椒", "加班"], correct: 0 },
-            { q: "陳思瑜退休後想做什麼？", a: ["當貴婦", "Uber司機賣杏鮑菇", "開咖啡廳"], correct: 1 },
-            { q: "陳思瑜的夢想是什麼？", a: ["發大財", "環遊世界", "準時下班"], correct: 2 }
-        ];
-        let currentIdx = 0;
+<script>
+    let score = 0;
+    let currentIdx = 0;
+    let selectedArr = [];
+    let isProcessing = false;
+    let reached100 = false; // 修正：新增這個變數
 
-        function nextQuestion() {
-            if (currentIdx >= quizData.length) {
-                document.getElementById('game-container').innerHTML = "<h1>🎂 生日快樂！</h1><p>恭喜通關！全宇宙最了解我的人就是你。禮物藏在衣櫃第二格喔！❤️</p>";
+    const quizData = [
+        { q: "第一次約會陳思瑜的指甲是什麼色系的？", a: ["黑色", "灰色", "綠色", "海邊色"], ans: [3], multi: false },
+        { q: "陳思瑜這輩子絕對不想做的事情是？", a: ["生小孩", "單身一輩子"], ans: [0], multi: false },
+        { q: "陳思瑜以後退休會做什麼？(複選)", a: ["uber司機", "賣杏鮑菇", "躺在家看netflix"], ans: [0, 1, 2], multi: true },
+        { q: "陳思瑜畫完妝常常忘記做什麼？(複選)", a: ["收東西", "塗口紅", "刷睫毛", "塗腮紅"], ans: [0, 1], multi: true },
+        { q: "我們第一次見面是幾月幾號？", a: ["8/5", "8/6", "8/7", "8/8"], ans: [2], multi: false },
+        { q: "第一次親親在哪裡？", a: ["海邊", "淡水老街", "我家樓下"], ans: [2], multi: false },
+        { q: "陳思瑜洗澡都先洗哪裡？", a: ["頭", "臉", "刷牙", "嘎吱窩"], ans: [0], multi: false },
+        { q: "聊天室陳思瑜完全沒罵過的髒話？", a: ["幹你娘", "靠杯", "機掰"], ans: [0], multi: false },
+        { q: "你因為什麼事情說過陳思瑜可愛？(複選)", a: ["臉很臭", "刷牙回訊息", "生氣抱怨", "嘴唇跟腮紅", "不敢打蟑螂", "忘記做事情"], ans: [0, 1, 2, 3, 4, 5], multi: true },
+        { q: "陳思瑜以後想住什麼房子？", a: ["破舊的透天", "很漂亮的公寓"], ans: [1], multi: false },
+        { q: "陳思瑜的夢想是什麼？", a: ["準時下班", "環遊世界", "組家庭"], ans: [0], multi: false },
+        { q: "陳思瑜喜歡看什麼reels？", a: ["搞笑", "跳舞", "旅遊", "吃飯"], ans: [0], multi: false },
+        { q: "陳思瑜喜歡怎樣的男生？", a: ["185排球男 有腹肌", "178籃球小子 整天耍啟"], ans: [1], multi: false },
+        { q: "基隆夜市那天早上我原本在幹嘛？", a: ["跟朋友吃飯", "打球", "睡覺", "洗車"], ans: [1], multi: false },
+        { q: "第一次看到我眼睛腫腫是因為什麼？", a: ["跟爸爸吵架", "東西弄壞了", "emo", "跟媽媽吵架"], ans: [3], multi: false },
+        { q: "這首歌你有沒有聽過？", a: ["有", "沒有"], ans: [0], multi: false }
+    ];
+
+    function startGame() {
+        document.getElementById('bgMusic').play();
+        renderQuestion();
+    }
+
+    function renderQuestion() {
+        if (currentIdx >= quizData.length) {
+            checkFinalResult();
+            return;
+        }
+        const card = document.getElementById('game-card');
+        card.classList.remove('fade-in');
+        void card.offsetWidth;
+        card.classList.add('fade-in');
+
+        isProcessing = false;
+        selectedArr = [];
+        let data = quizData[currentIdx];
+        document.getElementById('question').innerText = data.q;
+        document.getElementById('confirm-btn').style.display = data.multi ? "block" : "none";
+        
+        let html = "";
+        data.a.forEach((opt, i) => {
+            html += `<button class="btn" id="btn-${i}" onclick="handleSelect(${i})">${opt}</button>`;
+        });
+        document.getElementById('options').innerHTML = html;
+        document.getElementById('feedback').innerText = "";
+    }
+
+    function handleSelect(i) {
+        if (isProcessing) return;
+        let data = quizData[currentIdx];
+        if (data.multi) {
+            let btn = document.getElementById(`btn-${i}`);
+            btn.classList.toggle('selected');
+            if (selectedArr.includes(i)) {
+                selectedArr = selectedArr.filter(item => item !== i);
+            } else {
+                selectedArr.push(i);
+            }
+        } else {
+            validate([i]);
+        }
+    }
+
+    function checkMulti() {
+        if (isProcessing || selectedArr.length === 0) return;
+        validate(selectedArr);
+    }
+
+    function validate(userAns) {
+        isProcessing = true;
+        let data = quizData[currentIdx];
+        let correctAns = [...data.ans].sort();
+        userAns.sort();
+        
+        let isCorrect = JSON.stringify(userAns) === JSON.stringify(correctAns);
+        let feedbackEl = document.getElementById('feedback');
+        
+        if (isCorrect) {
+            score += 10;
+            document.getElementById('score').innerText = score;
+            document.getElementById('correctSound').play();
+            feedbackEl.innerHTML = "<span class='success'>✅ 答對了！</span>";
+            
+            if (score === 100 && !reached100) {
+                reached100 = true;
+                confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+                setTimeout(() => {
+                    alert("恭喜你已經通關拉！竟然比我預期的早，但繼續闖下去，看你可以得幾分吧！");
+                    currentIdx++;
+                    renderQuestion();
+                }, 500);
                 return;
             }
-            let data = quizData[currentIdx];
-            document.getElementById('question').innerText = data.q;
-            let optionsHTML = "";
-            data.a.forEach((opt, i) => {
-                optionsHTML += `<button class="btn" onclick="checkAnswer(${i})">${opt}</button>`;
-            });
-            document.getElementById('options').innerHTML = optionsHTML;
-            document.getElementById('feedback').innerText = "";
+        } else {
+            document.getElementById('wrongSound').play();
+            let correctTexts = data.ans.map(idx => data.a[idx]).join("、");
+            feedbackEl.innerHTML = `<span class='error'>❌ 錯了！正確是：${correctTexts}</span>`;
         }
 
-        function checkAnswer(i) {
-            if (i === quizData[currentIdx].correct) {
-                document.getElementById('feedback').innerText = "✅ 算你識相！";
-                document.getElementById('feedback').style.color = "green";
-                currentIdx++;
-                setTimeout(nextQuestion, 1000);
-            } else {
-                document.getElementById('feedback').innerText = "❌ 🙄 答錯了！";
-                document.getElementById('feedback').style.color = "red";
-            }
+        currentIdx++;
+        setTimeout(renderQuestion, 2000);
+    }
+
+    function checkFinalResult() {
+        const gameCard = document.getElementById('game-card');
+        if (score >= 100) {
+            confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+            gameCard.innerHTML = `<h1>🎉 挑戰成功！</h1><p style="font-size: 24px;">最終得分：${score}</p><p>恭喜過關！密碼是你的生日+我的生日❤️<br>生日快樂！</p>`;
+        } else {
+            gameCard.innerHTML = `<h1>❌ 挑戰失敗</h1><p style="font-size: 24px;">得分：${score}</p><p>🙄 才拿這點分數...<br>再給你一次機會吧！</p><button class="btn" onclick="location.reload()">重新挑戰</button>`;
         }
-    </script>
+    }
+</script>
 </body>
 </html>
