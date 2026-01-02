@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>汪汪隊專屬挑戰</title>
+    <style>
+        body { font-family: sans-serif; background: #ffe4e1; text-align: center; padding: 20px; }
+        .card { background: white; border-radius: 20px; padding: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        h1 { color: #ff69b4; }
+        .btn { display: block; width: 100%; padding: 15px; margin: 10px 0; border: none; background: #fdf5e6; border-radius: 10px; font-size: 16px; cursor: pointer; }
+        .btn:active { background: #ffd700; }
+        #feedback { font-weight: bold; margin-top: 20px; font-size: 20px; }
+    </style>
+</head>
+<body>
+    <div class="card" id="game-container">
+        <h1 id="question">準備好接受思瑜的考驗了嗎？</h1>
+        <div id="options">
+            <button class="btn" onclick="nextQuestion()">點我開始！</button>
+        </div>
+        <div id="feedback"></div>
+    </div>
+
+    <script>
+        const quizData = [
+            { q: "這輩子絕對不想做的事情是？", a: ["生小孩", "吃青椒", "加班"], correct: 0 },
+            { q: "陳思瑜退休後想做什麼？", a: ["當貴婦", "Uber司機賣杏鮑菇", "開咖啡廳"], correct: 1 },
+            { q: "陳思瑜的夢想是什麼？", a: ["發大財", "環遊世界", "準時下班"], correct: 2 }
+        ];
+        let currentIdx = 0;
+
+        function nextQuestion() {
+            if (currentIdx >= quizData.length) {
+                document.getElementById('game-container').innerHTML = "<h1>🎂 生日快樂！</h1><p>恭喜通關！全宇宙最了解我的人就是你。禮物藏在衣櫃第二格喔！❤️</p>";
+                return;
+            }
+            let data = quizData[currentIdx];
+            document.getElementById('question').innerText = data.q;
+            let optionsHTML = "";
+            data.a.forEach((opt, i) => {
+                optionsHTML += `<button class="btn" onclick="checkAnswer(${i})">${opt}</button>`;
+            });
+            document.getElementById('options').innerHTML = optionsHTML;
+            document.getElementById('feedback').innerText = "";
+        }
+
+        function checkAnswer(i) {
+            if (i === quizData[currentIdx].correct) {
+                document.getElementById('feedback').innerText = "✅ 算你識相！";
+                document.getElementById('feedback').style.color = "green";
+                currentIdx++;
+                setTimeout(nextQuestion, 1000);
+            } else {
+                document.getElementById('feedback').innerText = "❌ 🙄 答錯了！";
+                document.getElementById('feedback').style.color = "red";
+            }
+        }
+    </script>
+</body>
+</html>
